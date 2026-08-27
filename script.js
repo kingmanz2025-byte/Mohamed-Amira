@@ -54,27 +54,30 @@ music.volume=volume;
 }
 
 /*==========================
-Intro Animation
+Intro Animation + Cinematic Door
 ==========================*/
+const doorStage = document.getElementById("doorStage");
 
 openBtn.addEventListener("click",()=>{
+  // Keep the original intro visible until the button is pressed.
+  card.classList.add("flip");
+  doorStage.classList.add("active");
+  doorStage.setAttribute("aria-hidden","false");
 
-card.classList.add("flip");
+  // Fade only the intro layer behind the doors; the invitation is revealed through the opening.
+  setTimeout(()=>{
+    intro.classList.add("door-reveal");
+    doorStage.classList.add("open");
+  },120);
 
-setTimeout(()=>{
-
-intro.classList.add("hide");
-
-document.documentElement.style.overflow="";
-document.body.style.overflow="";
-
-fadeInMusic();
-
-// Let the intro finish disappearing, then begin the slow cinematic scroll.
-setTimeout(() => { startInvitationAutoScroll(); }, 1200);
-
-},900);
-
+  // Once the doors are fully open, remove the intro layer and start the cinematic page movement.
+  setTimeout(()=>{
+    intro.classList.add("hide");
+    document.documentElement.style.overflow="";
+    document.body.style.overflow="";
+    fadeInMusic();
+    setTimeout(() => { startInvitationAutoScroll(true); }, 350);
+  },1900);
 });
 
 /*==========================
@@ -585,129 +588,122 @@ console.log(
 
 
 /*====================================
-  Reading-Speed Auto Scroll
+  Cinematic Auto Scroll
+  - Moves continuously to the bottom, then back to Guest Wishes.
+  - Manual scrolling pauses it, then resumes from the user's current
+    position in the same direction after a short idle period.
 ====================================*/
 let invitationAutoScroll = null;
 let invitationAutoScrolling = false;
-let scrollPauseTimer = null;
+let resumeScrollTimer = null;
+let autoScrollDirection = 1;
+let autoScrollStarted = false;
 
-function stopInvitationAutoScroll(){
-  if(invitationAutoScroll){
-    cancelAnimationFrame(invitationAutoScroll);
-    invitationAutoScroll = null;
-  }
-  if(scrollPauseTimer){
-    clearTimeout(scrollPauseTimer);
-    scrollPauseTimer = null;
-  }
-  invitationAutoScrolling = false;
+function getMaxScroll(){
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
 }
-
-function startInvitationAutoScroll(){
+function getWishesY(){
   const target = document.getElementById("guest-wishes");
-  if(!target) return;
+  return target ? Math.max(0, target.getBoundingClientRect().top + window.scrollY - 12) : 0;
+}
+function stopInvitationAutoScroll(){
+  if(invitationAutoScroll){ cancelAnimationFrame(invitationAutoScroll); invitationAutoScroll=null; }
+  invitationAutoScrolling=false;
+}
+function scheduleResume(direction){
+  clearTimeout(resumeScrollTimer);
+  autoScrollDirection = direction || autoScrollDirection || 1;
+  resumeScrollTimer = setTimeout(()=>{
+    if(!document.hidden) startInvitationAutoScroll(false, autoScrollDirection);
+  }, 800);
+}
+function startInvitationAutoScroll(fromIntro=false, direction=null){
+  if(fromIntro) autoScrollStarted=true;
+  if(!autoScrollStarted) return;
+  if(invitationAutoScrolling) return;
 
-  const startY = window.scrollY || document.documentElement.scrollTop || 0;
-  const targetY = Math.max(
-    0,
-    target.getBoundingClientRect().top + window.scrollY - 12
-  );
-  const distance = targetY - startY;
+  const current = window.scrollY || document.documentElement.scrollTop || 0;
+  const maxY = getMaxScroll();
+  const wishesY = getWishesY();
 
-  if(distance < 30) return;
+  if(direction) autoScrollDirection = direction;
+  if(!autoScrollDirection) autoScrollDirection=1;
 
-  invitationAutoScrolling = true;
-
-  /*
-    Reading pace:
-    ~15 pixels/second = deliberately slow, so the guest can actually
-    read the sections while the page moves.
-  */
-  const pixelsPerSecond = 80;
-  const duration = Math.max(18000, (distance / pixelsPerSecond) * 1000);
-  const startTime = performance.now();
-
-  // Very gentle start, then almost linear movement.
-  function easeReading(t){
-    if(t < 0.08){
-      const x = t / 0.08;
-      return 0.5 * x * x * 0.08;
-    }
-    if(t > 0.92){
-      const x = (t - 0.92) / 0.08;
-      return 0.92 + (x - 0.5) * 0.08;
-    }
-    return t;
+  let targetY;
+  if(autoScrollDirection > 0){
+    // If already at/near the bottom, continue the loop upward.
+    if(current >= maxY - 4){ autoScrollDirection=-1; targetY=wishesY; }
+    else targetY=maxY;
+  }else{
+    // If already at/near Guest Wishes, continue the loop downward.
+    if(current <= wishesY + 4){ autoScrollDirection=1; targetY=maxY; }
+    else targetY=wishesY;
   }
+
+  const distance=Math.abs(targetY-current);
+  if(distance < 8){
+    autoScrollDirection *= -1;
+    return startInvitationAutoScroll(false, autoScrollDirection);
+  }
+
+  invitationAutoScrolling=true;
+  const pixelsPerSecond=48;
+  const duration=Math.max(16000,(distance/pixelsPerSecond)*1000);
+  const startTime=performance.now();
+  const startY=current;
 
   function frame(now){
     if(!invitationAutoScrolling) return;
-
-    const progress = Math.min(1, (now - startTime) / duration);
-    window.scrollTo(0, startY + distance * easeReading(progress));
-
-    if(progress < 1){
-      invitationAutoScroll = requestAnimationFrame(frame);
+    const progress=Math.min(1,(now-startTime)/duration);
+    window.scrollTo(0,startY+(targetY-startY)*progress);
+    if(progress<1){
+      invitationAutoScroll=requestAnimationFrame(frame);
     }else{
-      invitationAutoScrolling = false;
-      invitationAutoScroll = null;
-      window.scrollTo(0, targetY);
+      invitationAutoScrolling=false;
+      invitationAutoScroll=null;
+      window.scrollTo(0,targetY);
+      // Automatically reverse only at the endpoints.
+      autoScrollDirection *= -1;
+      scheduleResume(autoScrollDirection);
     }
   }
-
-  invitationAutoScroll = requestAnimationFrame(frame);
+  invitationAutoScroll=requestAnimationFrame(frame);
 }
 
-// Any manual interaction gives the guest full control.
-let userTouching = false;
-let resumeScrollTimer = null;
-
-function pauseAndResumeAutoScroll() {
-  if (!invitationAutoScrolling) return;
-
-  invitationAutoScrolling = false;
-
-  if (invitationAutoScroll) {
-    cancelAnimationFrame(invitationAutoScroll);
-    invitationAutoScroll = null;
-  }
-
-  clearTimeout(resumeScrollTimer);
-
-  resumeScrollTimer = setTimeout(() => {
-    startInvitationAutoScroll();
-  }, 600);
+function handleManualScroll(direction){
+  stopInvitationAutoScroll();
+  if(direction) autoScrollDirection=direction;
+  scheduleResume(autoScrollDirection);
 }
 
-/* الموبايل */
-window.addEventListener("touchstart", () => {
-  userTouching = true;
+window.addEventListener("wheel",(e)=>{
+  if(!autoScrollStarted) return;
+  handleManualScroll(e.deltaY >= 0 ? 1 : -1);
+},{passive:true});
 
-  if (invitationAutoScrolling) {
-    invitationAutoScrolling = false;
-
-    if (invitationAutoScroll) {
-      cancelAnimationFrame(invitationAutoScroll);
-      invitationAutoScroll = null;
-    }
-  }
-}, {passive:true});
-
-window.addEventListener("touchend", () => {
-  userTouching = false;
-
+let touchStartY=null;
+window.addEventListener("touchstart",(e)=>{
+  touchStartY=e.touches[0]?.clientY ?? null;
+  stopInvitationAutoScroll();
   clearTimeout(resumeScrollTimer);
-
-  resumeScrollTimer = setTimeout(() => {
-    if (!userTouching) {
-      startInvitationAutoScroll();
-    }
-  }, 700);
-}, {passive:true});
-
-/* الكمبيوتر */
-window.addEventListener("wheel", () => {
-  if (invitationAutoScrolling) {
-    pauseAndResumeAutoScroll();
+},{passive:true});
+window.addEventListener("touchend",(e)=>{
+  const endY=e.changedTouches[0]?.clientY ?? touchStartY;
+  if(touchStartY!==null && endY!==null){
+    const delta=touchStartY-endY;
+    if(Math.abs(delta)>6) autoScrollDirection=delta>0?1:-1;
   }
-}, {passive:true});
+  scheduleResume(autoScrollDirection);
+  touchStartY=null;
+},{passive:true});
+
+window.addEventListener("keydown",(e)=>{
+  if(["ArrowDown","PageDown"," "].includes(e.key)) handleManualScroll(1);
+  if(["ArrowUp","PageUp"].includes(e.key)) handleManualScroll(-1);
+},{passive:true});
+
+window.addEventListener("visibilitychange",()=>{
+  if(document.hidden) stopInvitationAutoScroll();
+  else if(autoScrollStarted) scheduleResume(autoScrollDirection);
+});
+

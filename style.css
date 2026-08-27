@@ -2797,3 +2797,93 @@ html,body{width:100%;max-width:100%;overflow-x:hidden;}
         margin: 10px auto 15px;
     }
 }
+
+/* ========================================
+   CINEMATIC DOOR REVEAL — LUXURY DOUBLE DOOR
+   The doors are drawn with CSS so they read as a
+   deliberate part of the invitation, not as a photo overlay.
+======================================== */
+.door-stage{
+  position:absolute;
+  inset:0;
+  z-index:30;
+  display:none;
+  overflow:hidden;
+  pointer-events:none;
+  perspective:2200px;
+  background:radial-gradient(circle at 50% 50%,rgba(255,250,240,.18),rgba(35,24,16,.92) 72%);
+}
+.door-stage.active{display:block;}
+.door-panel{
+  position:absolute;
+  top:-1%;
+  bottom:-1%;
+  width:50.6%;
+  overflow:hidden;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.14),transparent 18%,transparent 82%,rgba(0,0,0,.20)),
+    linear-gradient(180deg,#5a3d26 0%,#8b6240 18%,#6b492f 52%,#4a301f 100%);
+  box-shadow:0 0 50px rgba(0,0,0,.55), inset 0 0 0 2px rgba(226,190,112,.55);
+  transition:transform 1.9s cubic-bezier(.77,0,.18,1),filter 1.9s ease,opacity 1.9s ease;
+  will-change:transform;
+}
+.door-panel::before{
+  content:"";
+  position:absolute;
+  inset:4.5% 7%;
+  border:2px solid rgba(224,190,117,.78);
+  border-radius:18px 18px 7px 7px;
+  box-shadow:
+    inset 0 0 0 7px rgba(58,36,21,.28),
+    inset 0 0 30px rgba(0,0,0,.30),
+    0 0 0 1px rgba(255,240,194,.15);
+}
+.door-panel::after{
+  content:"";
+  position:absolute;
+  left:15%; right:15%; top:13%; bottom:13%;
+  border:1px solid rgba(232,204,143,.62);
+  border-radius:12px 12px 4px 4px;
+  background:
+    linear-gradient(90deg,transparent 48%,rgba(232,204,143,.28) 49%,rgba(232,204,143,.28) 51%,transparent 52%),
+    linear-gradient(180deg,transparent 31%,rgba(232,204,143,.22) 32%,rgba(232,204,143,.22) 33%,transparent 34%,transparent 66%,rgba(232,204,143,.22) 67%,rgba(232,204,143,.22) 68%,transparent 69%);
+  box-shadow:inset 0 0 35px rgba(0,0,0,.24);
+}
+.door-left{left:0;transform-origin:left center;border-right:2px solid rgba(228,194,120,.8);}
+.door-right{right:0;transform-origin:right center;border-left:2px solid rgba(228,194,120,.8);}
+.door-left .door-handle,.door-right .door-handle{display:block;}
+.door-stage::before,.door-stage::after{
+  content:"✦";
+  position:absolute;
+  z-index:3;
+  top:50%;
+  transform:translateY(-50%);
+  color:#f1d38c;
+  font-size:28px;
+  text-shadow:0 0 18px rgba(241,211,140,.7);
+  pointer-events:none;
+}
+.door-stage::before{left:calc(50% - 72px);}
+.door-stage::after{right:calc(50% - 72px);}
+.door-seam{
+  position:absolute;
+  left:50%;top:0;bottom:0;width:4px;
+  transform:translateX(-50%);
+  z-index:5;
+  background:linear-gradient(to bottom,transparent 3%,#d9b46a 15%,#fff0bf 50%,#d9b46a 85%,transparent 97%);
+  box-shadow:0 0 24px rgba(223,190,111,.75);
+  transition:opacity .55s ease;
+}
+.door-stage.open .door-left{transform:translateX(-101%) rotateY(-13deg);filter:brightness(.86);opacity:.98;}
+.door-stage.open .door-right{transform:translateX(101%) rotateY(13deg);filter:brightness(.86);opacity:.98;}
+.door-stage.open .door-seam{opacity:0;}
+@media(max-width:768px){
+  .door-panel{transition-duration:1.55s;}
+  .door-panel::before{inset:3.5% 5%;}
+  .door-panel::after{left:11%;right:11%;top:12%;bottom:12%;}
+  .door-stage::before{left:calc(50% - 56px);font-size:21px;}
+  .door-stage::after{right:calc(50% - 56px);font-size:21px;}
+}
+.intro.door-reveal .intro-bg,
+.intro.door-reveal .intro-overlay{opacity:0;transition:opacity .9s ease;}
+

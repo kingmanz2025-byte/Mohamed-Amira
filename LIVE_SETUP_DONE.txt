@@ -1,0 +1,12 @@
+Supabase connection configured for Mohamed & Amira.
+
+Project URL:
+https://ymaxtvvccwdflfhrbbew.supabase.co
+
+The website uses the public Publishable key in script.js.
+Do NOT add a service_role/secret key to the website.
+
+IMPORTANT:
+Run supabase-setup.sql ONCE in Supabase SQL Editor.
+It creates the separate table: public.wishes_mohamed_amira
+The website reads/writes ONLY to that table, so old wedding wishes from public.wishes are never displayed.
